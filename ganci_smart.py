@@ -205,23 +205,28 @@ import cv2
 import os
 
 def play_video_frame_by_frame(video_path):
-
-  video = cv2.VideoCapture(video_path)
-    # window name and size
-  cv2.namedWindow("video", cv2.WINDOW_AUTOSIZE)
-
-  while video.isOpened():
-      # Read video capture
-      ret, frame = video.read()
-      # Display each frame
-      cv2.imshow("video", frame)
-      # show one frame at a time
-      key = cv2.waitKey(0)
-      while key not in [ord('q'), ord('k')]:
-          key = cv2.waitKey(0)
-      # Quit when 'q' is pressed
-      if key == ord('q'):
-          break
+    video = cv2.VideoCapture(video_path)
+    if not video.isOpened():
+        print(f"Error: Could not open video {video_path}")
+        return
+    
+    cv2.namedWindow("video", cv2.WINDOW_AUTOSIZE)
+    
+    while video.isOpened():
+        ret, frame = video.read()
+        if not ret:
+            break
+        cv2.imshow("video", frame)
+        
+        key = cv2.waitKey(0)
+        while key not in [ord('q'), ord('k')]:
+            key = cv2.waitKey(0)
+        
+        if key == ord('q'):
+            break
+    
+    video.release()
+    cv2.destroyAllWindows()
 
 # Example usage with video_dict
 for video_name, data in video_dict.items():
