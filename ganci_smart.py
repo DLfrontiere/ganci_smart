@@ -183,65 +183,16 @@ def plot_labels_vs_time(ax, label_data, start_video):
     ax.set_xlabel('Time')
     ax.set_ylabel('Event Index')
 
-def plot_combined(ax, sensor_data, label_data, start_video):
-    event_colors = {
-        'sx_aggancio': 'red',
-        'sx_sgancio': 'blue',
-        'dx_aggancio': 'green',
-        'dx_sgancio': 'purple'
-    }
-
-    start_video_time = datetime.strptime(start_video, '%H:%M:%S')
-
-    # Calculate the overlapping time range
-    min_label_time = start_video_time + timedelta(seconds=label_data['START_OFFSET_SECOND'].min())
-    max_label_time = start_video_time + timedelta(seconds=label_data['END_OFFSET_SECOND'].max())
-
-    min_sensor_time = max(df['TIMESTAMP'].min() for df in sensor_data.values())
-    max_sensor_time = min(df['TIMESTAMP'].max() for df in sensor_data.values())
-
-    overlap_start = max(min_label_time, min_sensor_time)
-    overlap_end = min(max_label_time, max_sensor_time)
-
-    if overlap_start >= overlap_end:
-        print(f"No overlapping time range between labels and sensor data for {start_video}")
-        return
-
-    # Plot magnitudo values within the overlapping time range
-    for sensor, df in sensor_data.items():
-        filtered_df = df[(df['TIMESTAMP'] >= overlap_start) & (df['TIMESTAMP'] <= overlap_end)]
-        ax.plot(filtered_df['TIMESTAMP'], filtered_df['MAGNITUDO'], label=f'{sensor} magnitudo')
-
-    # Plot labels within the overlapping time range
-    for index, row in label_data.iterrows():
-        event_type = row['TYPE_EVENT']
-        color = event_colors.get(event_type, 'black')
-        start_time = start_video_time + timedelta(seconds=row['START_OFFSET_SECOND'])
-        end_time = start_video_time + timedelta(seconds=row['END_OFFSET_SECOND'])
-        if start_time < overlap_start:
-            start_time = overlap_start
-        if end_time > overlap_end:
-            end_time = overlap_end
-        ax.plot([start_time, end_time], [0, 0], color=color, linewidth=5, label=event_type)
-
-    handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    ax.legend(by_label.values(), by_label.keys())
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Magnitudo and Labels')
-
 # Plotting the data for each video in video_dict
 for video_name, data in video_dict.items():
     if data['cleaned_filtered_data'] is not None and data['labeling_data'] is not None:
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
         plot_magnitudo_vs_time(ax1, data['cleaned_filtered_data'])
         plot_labels_vs_time(ax2, data['labeling_data'], data['start_video'])
-        plot_combined(ax3, data['cleaned_filtered_data'], data['labeling_data'], data['start_video'])
 
         ax1.set_title(f'{video_name} - Magnitudo vs Time')
         ax2.set_title(f'{video_name} - Labels vs Time')
-        ax3.set_title(f'{video_name} - Combined Magnitudo and Labels vs Time')
 
         plt.tight_layout()
         plt.show()
