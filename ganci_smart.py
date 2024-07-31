@@ -210,6 +210,8 @@ import tkinter as tk
 from tkinter import Button, Label
 from PIL import Image, ImageTk
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Function to display a frame in tkinter
 def display_frame(frame, label, time_label):
@@ -223,6 +225,9 @@ def display_frame(frame, label, time_label):
     # Calculate and display the current time of the frame
     current_time = start_video_time + timedelta(seconds=frame_idx / fps)
     time_label.config(text=current_time.strftime('%H:%M:%S'))
+
+    # Update plots with the current frame time
+    update_plots(current_time)
 
 # Callback function for the next button
 def next_frame(seconds=1):
@@ -250,6 +255,49 @@ def prev_frame(seconds=1):
         display_frame(frame, label, time_label)
     print(f"Previous frame: {frame_idx}")
 
+# Function to plot magnitudo vs time
+def plot_magnitudo_vs_time(ax, sensor_data):
+    ax.clear()
+    for sensor, df in sensor_data.items():
+        ax.plot(df['TIMESTAMP'], df['MAGNITUDO'], label=f'{sensor} magnitudo')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Magnitudo')
+    ax.legend()
+
+# Function to plot labels vs time
+def plot_labels_vs_time(ax, label_data, start_video):
+    ax.clear()
+    event_colors = {
+        'sx_aggancio': 'red',
+        'sx_sgancio': 'blue',
+        'dx_aggancio': 'green',
+        'dx_sgancio': 'purple'
+    }
+
+    start_video_time = datetime.strptime(start_video, '%H:%M:%S')
+
+    for index, row in label_data.iterrows():
+        event_type = row['TYPE_EVENT']
+        color = event_colors.get(event_type, 'black')  # Default to black if event type not found
+        start_time = start_video_time + timedelta(seconds=row['START_OFFSET_SECOND'])
+        end_time = start_video_time + timedelta(seconds=row['END_OFFSET_SECOND'])
+        ax.plot([start_time, end_time], [index, index], color=color, label=event_type)
+
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(by_label.values(), by_label.keys())
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Event Index')
+
+# Function to update plots with the current frame time
+def update_plots(current_time):
+    global fig, ax1, ax2
+    plot_magnitudo_vs_time(ax1, sensor_data)
+    plot_labels_vs_time(ax2, labeling_data, start_video_time.strftime('%H:%M:%S'))
+    ax1.axvline(current_time, color='r', linestyle='--')
+    ax2.axvline(current_time, color='r', linestyle='--')
+    canvas.draw()
+
 for video_name, data in video_dict.items():
     video_path = data['video_path']
     if not os.path.exists(video_path):
@@ -257,6 +305,8 @@ for video_name, data in video_dict.items():
         continue
     
     start_video_time = datetime.strptime(data['start_video'], '%H:%M:%S')
+    sensor_data = data['cleaned_filtered_data']
+    labeling_data = data['labeling_data']
     
     print("Opening video")
     video_cap = cv2.VideoCapture(video_path)
@@ -289,6 +339,11 @@ for video_name, data in video_dict.items():
     prev_button = Button(button_frame, text="Previous (1s)", command=lambda: prev_frame(1))
     prev_button.pack(side="left")
 
+    # Create matplotlib figure and axes
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas.get_tk_widget().pack()
+
     # Display the first frame
     ret, frame = video_cap.read()
     if ret:
@@ -299,3 +354,4 @@ for video_name, data in video_dict.items():
 
     video_cap.release()
     break
+
