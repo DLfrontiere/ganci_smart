@@ -7,10 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1haC9mlQCA6I-VpFS60Wy6GilfHgs_4A6
 """
 
-#@title connect to drive
-
-from google.colab import drive
-drive.mount('/content/drive',force_remount=True)
 
 # Commented out IPython magic to ensure Python compatibility.
 #@title setup paths
