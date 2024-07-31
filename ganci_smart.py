@@ -193,7 +193,7 @@ for video_name, data in video_dict.items():
         plot_magnitudo_vs_time(ax1, data['cleaned_filtered_data'])
         plot_labels_vs_time(ax2, data['labeling_data'], data['start_video'])
 
-        ax1.set_title(f'{video_name} - Magnitudo vs Time')
+        ax1.set_title(f'{video_name} - Magnitude vs Time')
         ax2.set_title(f'{video_name} - Labels vs Time')
 
         plt.tight_layout()
@@ -354,4 +354,3 @@ for video_name, data in video_dict.items():
 
     video_cap.release()
     break
-
