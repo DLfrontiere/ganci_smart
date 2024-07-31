@@ -8,16 +8,13 @@ Original file is located at
 """
 
 
-##
-
-# Commented out IPython magic to ensure Python compatibility.
 #@title setup paths
 
-labeling_csv_folder_path = "/content/drive/MyDrive/Projects/Ganci_Smart/data/2024_6_25_labeling"
-sensors_csv_folder_path = "/content/drive/MyDrive/Projects/Ganci_Smart/data/2024_6_25_sensors"
-video_mp4_folder_path = "/content/drive/MyDrive/Projects/Ganci_Smart/data/2024_6_25_video"
-association_data_gopro_json_path = "/content/drive/MyDrive/Projects/Ganci_Smart/data/association_data_GOPRO.json"
-github_folder = "/content/drive/MyDrive/Projects/Ganci_Smart/ganci_smart"
+labeling_csv_folder_path = "../data/2024_6_25_labeling"
+sensors_csv_folder_path = "../data/2024_6_25_sensors"
+video_mp4_folder_path = "../data/2024_6_25_video"
+association_data_gopro_json_path = "../data/association_data_GOPRO.json"
+github_folder = "../ganci_smart"
 
 # %cd {github_folder}
 
