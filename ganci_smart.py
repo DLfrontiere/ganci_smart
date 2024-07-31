@@ -7,22 +7,27 @@ Original file is located at
     https://colab.research.google.com/drive/1haC9mlQCA6I-VpFS60Wy6GilfHgs_4A6
 """
 
+import os
 
 #@title setup paths
 
-labeling_csv_folder_path = "../data/2024_6_25_labeling"
-sensors_csv_folder_path = "../data/2024_6_25_sensors"
-video_mp4_folder_path = "../data/2024_6_25_video"
-association_data_gopro_json_path = "../data/association_data_GOPRO.json"
-github_folder = "../ganci_smart"
+current_path = os.getcwd()
+data_path = os.path.join(current_path,"data")
 
-# %cd {github_folder}
+labeling_csv_folder_path = os.path.join(data_path,"2024_6_25_labeling")
+sensors_csv_folder_path = os.path.join(data_path,"2024_6_25_sensors")
+video_mp4_folder_path = os.path.join(data_path,"2024_6_25_videos")
+association_data_gopro_json_path = os.path.join(data_path,"association_data_GOPRO.json")
+github_folder = os.path.join(current_path,"ganci_smart")
 
-!pip install -r requirements.txt
+import sys
+sys.path.append(github_folder)
 
-#@title read files
+from src.label import label
+from src.transformations.dataset import read_csv_ganci, csv_shift, timestamp, split_sensors
+from src.transformations.features import magnitudo, add_hours
+from src.transformations.filters import kalman_filter, lowess_filter
 
-import os
 import pandas as pd
 import json
 
@@ -48,12 +53,7 @@ print(sensors_data.keys())
 with open(association_data_gopro_json_path, 'r') as json_file:
     association_data_gopro = json.load(json_file)
 
-#@title pre-processing from ganci_smart/notebooks/syncronization_csv_video.ipynb
 
-from src.label import label
-from src.transformations.dataset import read_csv_ganci, csv_shift, timestamp, split_sensors
-from src.transformations.features import magnitudo, add_hours
-from src.transformations.filters import kalman_filter, lowess_filter
 
 
 def clean_data_from_path(csv_path):
@@ -138,169 +138,20 @@ Aggiungere meccanismo di shift avanti e indietro del csv.
 
 #Fatta da chat gpt,da provare
 
-import os
 import cv2
-import pandas as pd
-import matplotlib.pyplot as plt
-
-def visualize_video_with_labels(video_dict):
-    for video_name, video_data in video_dict.items():
-        cap = cv2.VideoCapture(video_data['video_path'])
-        labeling_data = video_data['labeling_data']
-
-        if labeling_data is not None:
-            labeling_data = pd.DataFrame(labeling_data)
-
-        while(cap.isOpened()):
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            current_time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000  # Current time in seconds
-            if labeling_data is not None:
-                current_labels = labeling_data[(labeling_data['START_OFFSET_SECOND'] <= current_time) &
-                                               (labeling_data['END_OFFSET_SECOND'] >= current_time)]
-
-            if len(current_labels) > 0:
-                label_text = ' '.join(current_labels['TYPE_EVENT'].values)
-            else:
-                label_text = 'No Label'
-
-            # Convert frame to RGB for Matplotlib
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            plt.imshow(frame_rgb)
-            plt.title(f'{video_name} - Time: {current_time:.2f}s - Label: {label_text}')
-            plt.axis('off')
-            plt.show()
-
-        cap.release()
-
-# Example usage:
-visualize_video_with_labels(video_dict)
-
-#IDEA 2 Plot magnitudo and labels
-
-"""
-Plottare magnitudo ( o altre info utili)  vs tempo lungo tutto il csv
-Plottare le label vs tempo lungo tutto il video
-Confrontare visivamente i due plot
-"""
-
-import os
-import matplotlib.pyplot as plt
-import pandas as pd
-
-def plot_magnitudo_vs_time(ax, sensor_data):
-    for sensor, df in sensor_data.items():
-        ax.plot(df['TIMESTAMP'], df['MAGNITUDO'], label=f'{sensor} magnitudo')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Magnitudo')
-    ax.legend()
-
-def plot_labels_vs_time(ax, label_data):
-    event_colors = {
-        'sx_aggancio': 'red',
-        'sx_sgancio': 'blue',
-        'dx_aggancio': 'green',
-        'dx_sgancio': 'purple'
-    }
-
-    for index, row in label_data.iterrows():
-        event_type = row['TYPE_EVENT']
-        color = event_colors.get(event_type, 'black')  # Default to black if event type not found
-        ax.plot([row['START_OFFSET_SECOND'], row['END_OFFSET_SECOND']], [index, index], color=color, label=event_type)
-
-    handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    ax.legend(by_label.values(), by_label.keys())
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Event Index')
-
-# Plotting the data for each video in video_dict
-for video_name, data in video_dict.items():
-    if data['cleaned_filtered_data'] is not None and data['labeling_data'] is not None:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-
-        plot_magnitudo_vs_time(ax1, data['cleaned_filtered_data'])
-        plot_labels_vs_time(ax2, data['labeling_data'])
-
-        ax1.set_title(f'{video_name} - Magnitudo vs Time')
-        ax2.set_title(f'{video_name} - Labels vs Time')
-
-        plt.tight_layout()
-        plt.show()
-
-#IDEA 2 Plot magnitudo and labels with labels times in hh:mm:ss
-
-"""
-Plottare magnitudo ( o altre info utili)  vs tempo lungo tutto il csv
-Plottare le label vs tempo lungo tutto il video
-Confrontare visivamente i due plot
-"""
-
-
-import os
 import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime, timedelta
 
-def plot_magnitudo_vs_time(ax, sensor_data):
-    for sensor, df in sensor_data.items():
-        ax.plot(df['TIMESTAMP'], df['MAGNITUDO'], label=f'{sensor} magnitudo')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Magnitudo')
-    ax.legend()
 
-def plot_labels_vs_time(ax, label_data, start_video):
-    event_colors = {
-        'sx_aggancio': 'red',
-        'sx_sgancio': 'blue',
-        'dx_aggancio': 'green',
-        'dx_sgancio': 'purple'
-    }
 
-    start_video_time = datetime.strptime(start_video, '%H:%M:%S')
 
-    for index, row in label_data.iterrows():
-        event_type = row['TYPE_EVENT']
-        color = event_colors.get(event_type, 'black')  # Default to black if event type not found
-        start_time = start_video_time + timedelta(seconds=row['START_OFFSET_SECOND'])
-        end_time = start_video_time + timedelta(seconds=row['END_OFFSET_SECOND'])
-        ax.plot([start_time, end_time], [index, index], color=color, label=event_type)
 
-    handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    ax.legend(by_label.values(), by_label.keys())
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Event Index')
-
-# Plotting the data for each video in video_dict
-for video_name, data in video_dict.items():
-    if data['cleaned_filtered_data'] is not None and data['labeling_data'] is not None:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-
-        plot_magnitudo_vs_time(ax1, data['cleaned_filtered_data'])
-        plot_labels_vs_time(ax2, data['labeling_data'], data['start_video'])
-
-        ax1.set_title(f'{video_name} - Magnitudo vs Time')
-        ax2.set_title(f'{video_name} - Labels vs Time')
-
-        plt.tight_layout()
-        plt.show()
-
-#IDEA 2 Plot magnitudo and labels with labels times in hh:mm:ss and the intersection plot over time
 
 """
-Plottare magnitudo ( o altre info utili)  vs tempo lungo tutto il csv
-Plottare le label vs tempo lungo tutto il video
-Confrontare visivamente i due plot
+plot  magnitudo vs time
+plot  labels vs time
 """
-
-
-import os
-import matplotlib.pyplot as plt
-import pandas as pd
-from datetime import datetime, timedelta
 
 def plot_magnitudo_vs_time(ax, sensor_data):
     for sensor, df in sensor_data.items():
@@ -395,6 +246,10 @@ for video_name, data in video_dict.items():
         plt.tight_layout()
         plt.show()
 
+
+"""
+plot video frame by frame
+"""
 import cv2
 import os
 
