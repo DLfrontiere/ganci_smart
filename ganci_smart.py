@@ -204,16 +204,19 @@ for video_name, data in video_dict.items():
 plot video frame by frame
 """
 
-import cv2
-import os
 import tkinter as tk
-from tkinter import Button, Label
-from PIL import Image, ImageTk
+from tkinter import Label, Button
 from datetime import datetime, timedelta
+import cv2
+from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
 
-# Function to display a frame in tkinter
+# Global variables
+playing = False
+fps_step = 1
+
 def display_frame(frame, label, time_label):
     frame_resized = cv2.resize(frame, (720, 480))
     frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
@@ -229,7 +232,6 @@ def display_frame(frame, label, time_label):
     # Update plots with the current frame time
     update_plots(current_time)
 
-# Callback function for the next button
 def next_frame(seconds=1):
     global frame_idx, video_cap, total_frames, fps
     step = int(fps * seconds)
@@ -242,7 +244,6 @@ def next_frame(seconds=1):
         display_frame(frame, label, time_label)
     print(f"Next frame: {frame_idx}")
 
-# Callback function for the previous button
 def prev_frame(seconds=1):
     global frame_idx, video_cap, fps
     step = int(fps * seconds)
@@ -255,7 +256,7 @@ def prev_frame(seconds=1):
         display_frame(frame, label, time_label)
     print(f"Previous frame: {frame_idx}")
 
-# Function to plot magnitudo vs time
+
 def plot_magnitudo_vs_time(ax, sensor_data):
     ax.clear()
     for sensor, df in sensor_data.items():
@@ -264,7 +265,7 @@ def plot_magnitudo_vs_time(ax, sensor_data):
     ax.set_ylabel('Magnitudo')
     ax.legend()
 
-# Function to plot labels vs time
+
 def plot_labels_vs_time(ax, label_data, start_video):
     ax.clear()
     event_colors = {
@@ -289,7 +290,6 @@ def plot_labels_vs_time(ax, label_data, start_video):
     ax.set_xlabel('Time')
     ax.set_ylabel('Event Index')
 
-# Function to update plots with the current frame time
 def update_plots(current_time):
     global fig, ax1, ax2
     plot_magnitudo_vs_time(ax1, sensor_data)
@@ -297,6 +297,25 @@ def update_plots(current_time):
     ax1.axvline(current_time, color='r', linestyle='--')
     ax2.axvline(current_time, color='r', linestyle='--')
     canvas.draw()
+
+def play_video():
+    global playing
+    playing = True
+    while playing:
+        next_frame(fps_step)
+        root.update()
+        root.after(int(1000 / fps))
+
+def stop_video():
+    global playing
+    playing = False
+
+def set_fps_step():
+    global fps_step
+    fps_step = float(step_entry.get())
+    next_button.config(text=f"Next ({fps_step}s)")
+    prev_button.config(text=f"Previous ({fps_step}s)")
+    print(f"Set FPS step to: {fps_step}")
 
 for video_name, data in video_dict.items():
     video_path = data['video_path']
@@ -334,10 +353,25 @@ for video_name, data in video_dict.items():
     button_frame = tk.Frame(root)
     button_frame.pack()
 
-    next_button = Button(button_frame, text="Next (1s)", command=lambda: next_frame(1))
+    next_button = Button(button_frame, text=f"Next ({fps_step}s)", command=lambda: next_frame(fps_step))
     next_button.pack(side="right")
-    prev_button = Button(button_frame, text="Previous (1s)", command=lambda: prev_frame(1))
+    prev_button = Button(button_frame, text=f"Previous ({fps_step}s)", command=lambda: prev_frame(fps_step))
     prev_button.pack(side="left")
+
+    play_button = Button(button_frame, text="Play", command=play_video)
+    play_button.pack(side="right")
+    stop_button = Button(button_frame, text="Stop", command=stop_video)
+    stop_button.pack(side="left")
+
+    step_label = Label(button_frame, text="Step (s):")
+    step_label.pack(side="left")
+    step_entry = tk.Entry(button_frame)
+    step_entry.pack(side="left")
+    set_step_button = Button(button_frame, text="Set Step", command=set_fps_step)
+    set_step_button.pack(side="left")
+
+    min_step_label = Label(root, text=f"Min Step: {1/fps:.2f} s")
+    min_step_label.pack()
 
     # Create matplotlib figure and axes
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
@@ -354,3 +388,4 @@ for video_name, data in video_dict.items():
 
     video_cap.release()
     break
+
