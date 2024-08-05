@@ -49,10 +49,9 @@ def read_csv_folder(folder_path,is_csv_data = True):
     return dataframes
 
 # Read CSV files from both folders
-labeling_data = read_csv_folder(labeling_csv_folder_path,is_csv_data = False)
 sensors_data = read_csv_folder(sensors_csv_folder_path)
+labeling_data = read_csv_folder(labeling_csv_folder_path,is_csv_data = False)
 
-print(sensors_data.keys())
 # Read JSON file
 with open(association_data_gopro_json_path, 'r') as json_file:
     association_data_gopro = json.load(json_file)
@@ -61,25 +60,19 @@ with open(association_data_gopro_json_path, 'r') as json_file:
 
 
 def clean_data_from_path(csv_path):
-
   df = read_csv_ganci(csv_path)
   dfs = df\
         .pipe(csv_shift)\
         .pipe(timestamp)\
         .pipe(split_sensors)
-
   return dfs
 
-
 def clean_data(df):
-
   dfs = df\
         .pipe(csv_shift)\
         .pipe(timestamp)\
         .pipe(split_sensors)
-
   return dfs
-
 
 def apply_kalman_to_sensors(dfs):
   df = dfs
@@ -90,19 +83,16 @@ def apply_kalman_to_sensors(dfs):
   return df
 
 
-print(sensors_data['data_20240625_104649.csv'])
+
 clean_and_split_dfs = clean_data(sensors_data['data_20240625_104649.csv'])
 clean_and_split_dfs = clean_data_from_path(sensors_paths[0])
 
-for sensor in clean_and_split_dfs.keys():
-  print(sensor)
-  print(clean_and_split_dfs[sensor].head())
 
 filtered_dfs = apply_kalman_to_sensors(clean_and_split_dfs)
 
 for sensor in filtered_dfs.keys():
   print(sensor)
-  print(filtered_dfs[sensor].head())
+  print(filtered_dfs[sensor].head(3))
 
 # Create a dictionary with video names as keys
 video_dict = {}
@@ -130,31 +120,15 @@ for key, value in association_data_gopro.items():
 
     video_dict[video_name] = video_data
 
-# Example usage:
-print(video_dict)
-
-#IDEA 1 documento
-"""
-Visualizzare a schermo il video frame by frame,
-label di quel frame e dati utili del csv in quel frame(magnitudo?), confrontare visivamente plot e video.
-Aggiungere meccanismo di shift avanti e indietro del csv.
-"""
-
-#Fatta da chat gpt,da provare
-
 import cv2
 import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime, timedelta
 
-
-
-
-
-
 """
-plot  magnitudo vs time
-plot  labels vs time
+For each sensor:
+    plot magnitudo vs time
+    plot labels vs time
 """
 
 def plot_magnitudo_vs_time(ax, sensor_data):
@@ -203,7 +177,11 @@ for video_name, data in video_dict.items():
 
 
 """
-plot video frame by frame
+For each video:
+    plot video frame by frame
+    plot magnitudo vs time
+    plot labels vs time
+    vertical line on all plots for current values
 """
 
 import tkinter as tk
@@ -268,20 +246,16 @@ def plot_magnitudo_vs_time(ax, sensor_data):
     for sensor, df in sensor_data.items():
         # Ensure TIMESTAMP is in datetime format and drop NaN values
         df['TIMESTAMP'] = pd.to_datetime(df['TIMESTAMP'])
-        df = df.dropna(subset=['TIMESTAMP'])
         
-        # Extract the time-only portion as a string
-        df['TIME_ONLY'] = df['TIMESTAMP'].dt.strftime('%H:%M:%S')
-        
-        # Print the time-only series for debugging
-        print(df['TIME_ONLY'])
-        print(df['TIME_ONLY'].iloc[0])
+        # Print df timestamp type and value, and the same for the first element
+        print(f"TIMESTAMP type for {sensor}: {type(df['TIMESTAMP'])}")
+        print(f"TIMESTAMP values for {sensor}: {df['TIMESTAMP'].head()}")
+        print(f"First TIMESTAMP value for {sensor}: {df['TIMESTAMP'].iloc[0]} type: {type(df['TIMESTAMP'].iloc[0])}")
         
         # Plot using full TIMESTAMP but format x-axis to show only time
         ax.plot(df['TIMESTAMP'], df['MAGNITUDO'], label=f'{sensor} magnitudo')
     
     # Format the x-axis to show only the time portion
-    #ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
     ax.set_xlabel('Time')
     ax.set_ylabel('Magnitudo')
     ax.legend()
