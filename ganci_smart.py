@@ -9,6 +9,8 @@ Original file is located at
 
 import os
 
+import numpy as np
+
 #@title setup paths
 
 current_path = os.getcwd()
@@ -212,6 +214,8 @@ from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
+import pandas as pd
+import matplotlib.dates as mdates
 
 # Global variables
 playing = False
@@ -257,13 +261,31 @@ def prev_frame(seconds=1):
     print(f"Previous frame: {frame_idx}")
 
 
+
 def plot_magnitudo_vs_time(ax, sensor_data):
     ax.clear()
+    
     for sensor, df in sensor_data.items():
+        # Ensure TIMESTAMP is in datetime format and drop NaN values
+        df['TIMESTAMP'] = pd.to_datetime(df['TIMESTAMP'])
+        df = df.dropna(subset=['TIMESTAMP'])
+        
+        # Extract the time-only portion as a string
+        df['TIME_ONLY'] = df['TIMESTAMP'].dt.strftime('%H:%M:%S')
+        
+        # Print the time-only series for debugging
+        print(df['TIME_ONLY'])
+        print(df['TIME_ONLY'].iloc[0])
+        
+        # Plot using full TIMESTAMP but format x-axis to show only time
         ax.plot(df['TIMESTAMP'], df['MAGNITUDO'], label=f'{sensor} magnitudo')
-    ax.set_xlabel('Time (s)')
+    
+    # Format the x-axis to show only the time portion
+    #ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    ax.set_xlabel('Time')
     ax.set_ylabel('Magnitudo')
     ax.legend()
+    ax.figure.autofmt_xdate()  # Auto format date labels
 
 
 def plot_labels_vs_time(ax, label_data, start_video):
@@ -327,6 +349,8 @@ for video_name, data in video_dict.items():
     sensor_data = data['cleaned_filtered_data']
     labeling_data = data['labeling_data']
     
+    #print("sd",sensor_data['TR2'].head(5),"ld",labeling_data.head(5))
+
     print("Opening video")
     video_cap = cv2.VideoCapture(video_path)
     total_frames = int(video_cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -343,25 +367,25 @@ for video_name, data in video_dict.items():
 
     # Create label to display image
     label = Label(root)
-    label.pack()
+    label.grid(row=0, column=0, rowspan=6)
 
     # Create time label to display the current time of the frame
     time_label = Label(root, text="")
-    time_label.pack()
+    time_label.grid(row=6, column=0)
 
     # Create buttons for next and previous with 1-second step
     button_frame = tk.Frame(root)
-    button_frame.pack()
+    button_frame.grid(row=7, column=0)
 
-    next_button = Button(button_frame, text=f"Next ({fps_step}s)", command=lambda: next_frame(fps_step))
-    next_button.pack(side="right")
     prev_button = Button(button_frame, text=f"Previous ({fps_step}s)", command=lambda: prev_frame(fps_step))
     prev_button.pack(side="left")
+    next_button = Button(button_frame, text=f"Next ({fps_step}s)", command=lambda: next_frame(fps_step))
+    next_button.pack(side="right")
 
-    play_button = Button(button_frame, text="Play", command=play_video)
-    play_button.pack(side="right")
     stop_button = Button(button_frame, text="Stop", command=stop_video)
     stop_button.pack(side="left")
+    play_button = Button(button_frame, text="Play", command=play_video)
+    play_button.pack(side="right")
 
     step_label = Label(button_frame, text="Step (s):")
     step_label.pack(side="left")
@@ -371,12 +395,13 @@ for video_name, data in video_dict.items():
     set_step_button.pack(side="left")
 
     min_step_label = Label(root, text=f"Min Step: {1/fps:.2f} s")
-    min_step_label.pack()
+    min_step_label.grid(row=8, column=0)
 
     # Create matplotlib figure and axes
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    
+    fig, (ax2, ax1) = plt.subplots(2, 1, figsize=(8, 8))
     canvas = FigureCanvasTkAgg(fig, master=root)
-    canvas.get_tk_widget().pack()
+    canvas.get_tk_widget().grid(row=0, column=1, rowspan=12)
 
     # Display the first frame
     ret, frame = video_cap.read()
